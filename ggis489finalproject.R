@@ -17,3 +17,6 @@ corn_N_removal_rate_per_hectare <- corn_N_removal_rate_per_bushel * corn_bushels
 corn_points <- rasterToPoints(corn_yield_per_hectare)
 corn_removal <- N_kg_per_ton*corn_yield_per_hectare
 corn_dif <- corn_N_rate - corn_removal
+library(maps)
+map("world", fill=TRUE, col="white", bg="lightblue", mar=c(0,0,0,0))
+plot(corn_dif,zlim=c(0,500),add=TRUE)
