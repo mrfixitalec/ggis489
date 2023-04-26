@@ -1,0 +1,81 @@
+# import needed libraries
+install.packages("sp")
+library(sp)
+install.packages("raster")
+library(raster)
+
+# list of all path files for the data files
+"./Fertilizer_maize/maize_PotassiumDataQuality.tif"
+"./Fertilizer_maize/maize_PotassiumApplication_Total.tif"
+"./Fertilizer_maize/maize_PotassiumApplication_Rate.tif"
+"./Fertilizer_maize/maize_PhosphorusDataQuality.tif"
+"./Fertilizer_maize/maize_PhosphorusApplication_Total.tif"
+"./Fertilizer_maize/maize_PhosphorusApplication_Rate.tif"
+"./Fertilizer_maize/maize_NitrogenDataQuality.tif"
+"./Fertilizer_maize/maize_NitrogenApplication_Total.tif"
+"./Fertilizer_maize/maize_NitrogenApplication_Rate.tif"
+
+
+"./Fertilizer_soybean/soybean_PotassiumDataQuality.tif"
+"./Fertilizer_soybean/soybean_PotassiumApplication_Total.tif"
+"./Fertilizer_soybean/soybean_PotassiumApplication_Rate.tif"
+"./Fertilizer_soybean/soybean_PhosphorusDataQuality.tif"
+"./Fertilizer_soybean/soybean_PhosphorusApplication_Total.tif"
+"./Fertilizer_soybean/soybean_PhosphorusApplication_Rate.tif"
+"./Fertilizer_soybean/soybean_NitrogenDataQuality.tif"
+"./Fertilizer_soybean/soybean_NitrogenApplication_Total.tif"
+"./Fertilizer_soybean/soybean_NitrogenApplication_Rate.tif"
+
+
+"./FertilizerBalance_Geotiff/PhosphorusBalanceOnLandscape_140Crops.tif"
+"./FertilizerBalance_Geotiff/NitrogenBalanceOnLandscape_140Crops.tif"
+
+
+"./maize_HarvAreaYield_Geotiff/maize_HarvAreaYield_Geotiff/maize_YieldPerHectare.tif"
+"./maize_HarvAreaYield_Geotiff/maize_HarvAreaYield_Geotiff/maize_Production.tif"
+"./maize_HarvAreaYield_Geotiff/maize_HarvAreaYield_Geotiff/maize_HarvestedAreaHectares.tif"
+"./maize_HarvAreaYield_Geotiff/maize_HarvAreaYield_Geotiff/maize_HarvestedAreaFraction.tif"
+"./maize_HarvAreaYield_Geotiff/maize_HarvAreaYield_Geotiff/maize_DataQuality_Yield.tif"
+"./maize_HarvAreaYield_Geotiff/maize_HarvAreaYield_Geotiff/maize_DataQuality_HarvestedArea.tif"
+
+"./soybean_HarvAreaYield_Geotiff/soybean_HarvAreaYield_Geotiff/soybean_YieldPerHectare.tif"
+"./soybean_HarvAreaYield_Geotiff/soybean_HarvAreaYield_Geotiff/soybean_Production.tif"
+"./soybean_HarvAreaYield_Geotiff/soybean_HarvAreaYield_Geotiff/soybean_HarvestedAreaHectares.tif"
+"./soybean_HarvAreaYield_Geotiff/soybean_HarvAreaYield_Geotiff/soybeane_HarvestedAreaFraction.tif"
+"./soybean_HarvAreaYield_Geotiff/soybean_HarvAreaYield_Geotiff/soybean_DataQuality_Yield.tif"
+"./soybean_HarvAreaYield_Geotiff/soybean_HarvAreaYield_Geotiff/soybean_DataQuality_HarvestedArea.tif"
+
+
+# Load the raster package if not already loaded
+library(raster)
+
+get_information <- function(path) {
+  raster_layer <- raster(path)
+  
+  # Get the resolution, extent, and projection of the raster
+  res_info <- res(raster_layer)
+  extent_info <- extent(raster_layer)
+  proj_info <- projection(raster_layer)
+  
+  # Get the unit of measurement from the projection information
+  # unit_info <- attr(proj_info, "unit")
+  unit_info <- attr(res_info, "unit")
+  
+  # Print the resolution, extent, projection, and unit of measurement
+  cat("Resolution:", res_info, "\n")
+  cat("Extent:\n")
+  cat("xmin:", xmin(extent_info), "\n")
+  cat("ymin:", ymin(extent_info), "\n")
+  cat("xmax:", xmax(extent_info), "\n")
+  cat("ymax:", ymax(extent_info), "\n")
+  cat("Projection: ", proj_info, "\n")
+  cat("Unit of measurement:", unit_info, "\n")
+  
+  data_values <- values(raster_layer)
+  # Print the first 10 values
+  print(data_values)
+  
+  plot(raster_layer)
+}
+
+get_information("./Fertilizer_maize/maize_PhosphorusApplication_Rate.tif")
