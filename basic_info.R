@@ -92,7 +92,7 @@ add_function <- function(x, y) {
   return(sum)
 }
 
-total_three_rasters <- function(raster_directories) {
+add_rasters <- function(raster_directories, name_for_plot) {
 
   # Read in the first raster
   sum_raster_layer <- raster(raster_directories[[1]])
@@ -108,10 +108,10 @@ total_three_rasters <- function(raster_directories) {
 
   # Set custom breaks and colors for the plot
   breaks <- seq(cellStats(sum_raster_layer, "min"), cellStats(sum_raster_layer, "max"), length.out = 10)
-  colors <- colorRampPalette(c("white", "red"))(length(breaks)-1)
+  colors <- colorRampPalette(c("yellow", "red"))(length(breaks)-1)
 
   # Create a plot with a blue background color and the sum raster layer using custom breaks and colors
-  plot(sum_raster_layer, breaks = breaks, col = colors, bg = "lightblue")
+  plot(sum_raster_layer, breaks = breaks, col = colors, bg = "lightblue", main = name_for_plot)
 
   # Add country borders as a shapefile layer
   countries <- ne_countries(scale = "medium", returnclass = "sf")
@@ -127,12 +127,12 @@ total_three_rasters <- function(raster_directories) {
 maize_total_fertilizer_list <- list("./Fertilizer_maize/maize_PotassiumApplication_Total.tif",
                                     "./Fertilizer_maize/maize_PhosphorusApplication_Total.tif",
                                     "./Fertilizer_maize/maize_NitrogenApplication_Total.tif")
-# total_three_rasters(maize_total_fertilizer_list)
+# add_rasters(maize_total_fertilizer_list)
 
 soybean_total_fertilizer_list <- list("./Fertilizer_soybean/soybean_PotassiumApplication_Total.tif",
                                       "./Fertilizer_soybean/soybean_PhosphorusApplication_Total.tif",
                                       "./Fertilizer_soybean/soybean_NitrogenApplication_Total.tif")
-# total_three_rasters(soybean_total_fertilizer_list)
+# add_rasters(soybean_total_fertilizer_list)
 
 maize_and_soybean_total_application_list <- c(maize_total_fertilizer_list, soybean_total_fertilizer_list)
-total_three_rasters(maize_and_soybean_total_application_list)
+add_rasters(maize_and_soybean_total_application_list, "Total Maize and Soybean Fertilizer Application")
