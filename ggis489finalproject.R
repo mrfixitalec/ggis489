@@ -2,8 +2,7 @@
 # Alec Thompson and Emily Ho
 
 
-crops <- c("wheat", "maize", "rice", "barley", "millet", "sorghum", "soybean", "sunflower", "potato", "cassava", "sugarcane", "sugarbeet", "oilpalm", "rapeseed", "groundnut", "cotton", "rye")
-
+crops <- c("wheat", "maize", "rice", "barley", "millet", "sorghum", "soybean", "sunflower", "potato", "cassava","sugarcane", "sugarbeet", "oilpalm", "rapeseed", "groundnut", "cotton", "rye")
 
 removalRate <- function(crop){
   # This is output in kg/ton for c(N,P2O5,K2O)
@@ -45,6 +44,39 @@ loadLibraries <- function(){
   library(fields)
 }
 
+yield_string <- function(crop){
+  yield_base_path <- "_HarvAreaYield_Geotiff"
+  yield_file_end <- "_YieldPerHectare.tif"
+  toRet <- paste(crop,yield_base_path,"/",crop,yield_file_end,sep="")
+  return (toRet)
+}
+
+NPK_string <- function(crop,NPK){
+  nutrient_base_path <- "Fertilizer_"
+  nutrient_file_end <- paste("_",NPK,"Application_Rate.tif",sep="")
+  toRet <- paste(nutrient_base_path,crop,"/",crop,nutrient_file_end,sep="")
+  return (toRet)
+}
+
+plot_graph <- function(ras_to_plot,plot_name){
+  #plot(ras_to_plot)
+  # Set custom colors for the plot
+  colors <- colorRampPalette(c(brewer.pal(7,"Greens")))(7)
+
+  # Get the mean plus three sd
+  mean_3sd <- 3*cellStats(ras_to_plot,"sd")+cellStats(ras_to_plot, "mean")
+  # Make the breaks according to the min, max, and mean+3sd
+  breaks <- c(cellStats(ras_to_plot,"min"),seq(0, mean_3sd, length.out = 6),cellStats(ras_to_plot,"max"))
+  # Plot the image with a legend containing all possible data values
+  imagePlot(ras_to_plot,breaks=breaks,col=colors,useRaster=TRUE,main=plot_name)
+  # Add country borders as a shapefile layer
+  countries <- ne_countries(scale = "medium", returnclass = "sf")
+  # Extract the geometry attribute from the countries object
+  countries_geom <- st_geometry(countries)
+  # Plot the countries with black borders
+  plot(countries_geom, border = "black", add = TRUE)
+}
+
 estimateLeaching <- function(yieldFile,nutrientFile,crop,NPK_choice,plotName){
   # yieldFile is the filePath for the desired crop yield file
   # nutrientFile is path for desired crop nutrient application data
@@ -76,21 +108,44 @@ estimateLeaching <- function(yieldFile,nutrientFile,crop,NPK_choice,plotName){
   # Get difference in applied and removed
   nutrient_dif <- nutrient_hectare - removal_hectare
 
-  # Set custom colors for the plot
-  colors <- colorRampPalette(c(brewer.pal(7,"Greens")))(7)
-
-  # Get the mean plus three sd
-  mean_3sd <- 3*cellStats(nutrient_dif,"sd")+cellStats(nutrient_dif, "mean")
-  # Make the breaks according to the min, max, and mean+3sd
-  breaks <- c(cellStats(nutrient_dif,"min"),seq(0, mean_3sd, length.out = 6),cellStats(nutrient_dif,"max"))
-  # Plot the image with a legend containing all possible data values
-  imagePlot(nutrient_dif,breaks=breaks,col=colors,useRaster=TRUE,main=plotName)
-
-  # Add country borders as a shapefile layer
-  countries <- ne_countries(scale = "medium", returnclass = "sf")
-  # Extract the geometry attribute from the countries object
-  countries_geom <- st_geometry(countries)
-  # Plot the countries with black borders
-  plot(countries_geom, border = "black", add = TRUE)
+  plot_graph(nutrient_dif,plotName)
 
 }
+
+totalLeaching <- function(NPK_choice){
+  NPK_full <- switch (NPK_choice,
+   "N" = "Nitrogen",
+   "P" = "Phosphorus",
+   "K" = "Potassium",
+   -1
+  )
+  if (NPK_full == -1){
+    stop("NPK_choice is not a valid character (N,P,or K). Please choose a valid character.")
+  }
+  base <- NA
+  for (i in 1:length(crops)){
+    removal_vec <- removalRate(crops[i])
+    crop_yield_path <- yield_string(crops[i])
+    crop_nutrient_path <- NPK_string(crops[i],NPK_full)
+    yield_hectare <- raster(crop_yield_path)
+    nutrient_hectare <- raster(crop_nutrient_path)
+    NPK_val <- switch (NPK_choice,
+     "N" = removal_vec[1],
+     "P" = removal_vec[2],
+     "K" = removal_vec[3],
+     -1
+    )
+    removal_hectare <- yield_hectare * NPK_val
+    # Get difference in applied and removed
+    nutrient_dif <- nutrient_hectare - removal_hectare
+    if(i == 1){
+      base <- nutrient_dif
+    } else{
+      temp_base <- base + nutrient_dif
+      base <- cover(temp_base,base,nutrient_dif)
+    }
+  }
+  plot_graph(base,paste("Total",NPK_choice,"leached across 17 crops"))
+}
+
+#test
