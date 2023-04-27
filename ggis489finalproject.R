@@ -42,6 +42,7 @@ loadLibraries <- function(){
   library(RColorBrewer)
   library(sf)
   library(rnaturalearth)
+  library(fields)
 }
 
 estimateLeaching <- function(yieldFile,nutrientFile,crop,NPK_choice,plotName){
@@ -50,34 +51,45 @@ estimateLeaching <- function(yieldFile,nutrientFile,crop,NPK_choice,plotName){
   # crop is the string that needs to be passed in that matches one of the strings from the removalRate function
   # NPK choice needs to be a character, "N" for Nitrogen, "P" for Phosphorus, and "K" for Potassium
   # plotName should be a string for the plot name
+
+  # Load the files in
   yield_hectare <- raster(yieldFile)
   nutrient_hectare <- raster(nutrientFile)
+  # Get the removal rates for the crop and check validity
   removal_vec <- removalRate(crop)
   if (removal_vec[1] == -1){
     stop("String for 'crop' is not valid. Please choose a valid crop string.")
   }
+  # Choose nutrient based on argument
   NPK_val <- switch (NPK_choice,
     "N" = removal_vec[1],
     "P" = removal_vec[2],
     "K" = removal_vec[3],
     -1
   )
+  # Make sure nutrient choice was valid
   if (NPK_val == -1){
     stop("NPK_choice is not a valid character (N,P,or K). Please choose a valid character.")
   }
+  # Get removal data (yield/hectare*nutrient/yield)
   removal_hectare <- yield_hectare * NPK_val
+  # Get difference in applied and removed
   nutrient_dif <- nutrient_hectare - removal_hectare
 
-  # Set custom breaks and colors for the plot
-  colors <- colorRampPalette(c("red","pink","blue","orange","yellow"))(10)
+  # Set custom colors for the plot
+  colors <- colorRampPalette(c(brewer.pal(7,"Greens")))(7)
 
-  # Create a plot with a blue background color and the sum raster layer using custom breaks and colors
-  plot(nutrient_dif, col = colors, bg = "lightblue", main = plotName, zlim=c(0,(1/8)*cellStats(nutrient_dif, "max")))
+  # Get the mean plus three sd
+  mean_3sd <- 3*cellStats(nutrient_dif,"sd")+cellStats(nutrient_dif, "mean")
+  # Make the breaks according to the min, max, and mean+3sd
+  breaks <- c(cellStats(nutrient_dif,"min"),seq(0, mean_3sd, length.out = 6),cellStats(nutrient_dif,"max"))
+  # Plot the image with a legend containing all possible data values
+  imagePlot(nutrient_dif,breaks=breaks,col=colors,useRaster=TRUE,main=plotName)
+
   # Add country borders as a shapefile layer
   countries <- ne_countries(scale = "medium", returnclass = "sf")
   # Extract the geometry attribute from the countries object
   countries_geom <- st_geometry(countries)
-
   # Plot the countries with black borders
   plot(countries_geom, border = "black", add = TRUE)
 
