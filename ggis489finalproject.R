@@ -1,16 +1,29 @@
 # GGIS489 Final Project
 # Alec Thompson and Emily Ho
 
+loadLibraries <- function(){
+  install.packages(c("sp","raster","RColorBrewer","sf","rnaturalearth","fields"))
+  library(sp)
+  library(raster)
+  library(RColorBrewer)
+  library(sf)
+  library(rnaturalearth)
+  library(fields)
+}
 
 crops <- c("wheat", "maize", "rice", "barley", "millet", "sorghum", "soybean", "sunflower", "potato", "cassava","sugarcane", "sugarbeet", "oilpalm", "rapeseed", "groundnut", "cotton", "rye")
 
-removalRate <- function(crop){
-  # This is output in kg/ton for c(N,P2O5,K2O)
-  # Source: http://www.ipni.net/article/IPNI-3296
-  # For cassava: https://www.sciencedirect.com/science/article/abs/pii/S0378429015300642
-  # Used Canola numbers for rapeseed
-  # Oil Palm numbers: https://theicct.org/wp-content/uploads/2021/06/Teh_palm-residues_final.pdf
 
+# removalRate -------------------------------------------------------------
+# Gets the NPK removal rate data for the specific crop input in format c(N,P,K).
+# Returns -1 if crop string is invalid
+# This is output in kg/ton for c(N,P2O5,K2O)
+# Source: http://www.ipni.net/article/IPNI-3296
+# For cassava: https://www.sciencedirect.com/science/article/abs/pii/S0378429015300642
+# Used Canola numbers for rapeseed
+# Oil Palm numbers: https://theicct.org/wp-content/uploads/2021/06/Teh_palm-residues_final.pdf
+
+removalRate <- function(crop){
   output <- switch(
     crop,
     "wheat"=c(25,9.5,5.5),
@@ -35,15 +48,10 @@ removalRate <- function(crop){
   return (output)
 }
 
-loadLibraries <- function(){
-  library(sp)
-  library(raster)
-  library(RColorBrewer)
-  library(sf)
-  library(rnaturalearth)
-  library(fields)
-}
-
+# yield_string ------------------------------------------------------------
+# Function that takes in the specified crop and gets the file path for the
+# yield/hectare .tif file for that crop.
+# Returns: string for the file path
 yield_string <- function(crop){
   yield_base_path <- "_HarvAreaYield_Geotiff"
   yield_file_end <- "_YieldPerHectare.tif"
@@ -51,6 +59,11 @@ yield_string <- function(crop){
   return (toRet)
 }
 
+
+# NPK_string --------------------------------------------------------------
+# Function that takes in the specified crop and nutrient and gets the file path for the
+# application rate .tif file for that crop.
+# Returns: string for the file path
 NPK_string <- function(crop,NPK){
   nutrient_base_path <- "Fertilizer_"
   nutrient_file_end <- paste("_",NPK,"Application_Rate.tif",sep="")
@@ -58,6 +71,10 @@ NPK_string <- function(crop,NPK){
   return (toRet)
 }
 
+
+# plot_graph --------------------------------------------------------------
+# function that takes a raster and a plot name as arguments and generates
+# a plot of the raster with appropriate coloring and legend.
 plot_graph <- function(ras_to_plot,plot_name){
   #plot(ras_to_plot)
   # Set custom colors for the plot
@@ -77,13 +94,17 @@ plot_graph <- function(ras_to_plot,plot_name){
   plot(countries_geom, border = "black", add = TRUE)
 }
 
-estimateLeaching <- function(yieldFile,nutrientFile,crop,NPK_choice,plotName){
-  # yieldFile is the filePath for the desired crop yield file
-  # nutrientFile is path for desired crop nutrient application data
-  # crop is the string that needs to be passed in that matches one of the strings from the removalRate function
-  # NPK choice needs to be a character, "N" for Nitrogen, "P" for Phosphorus, and "K" for Potassium
-  # plotName should be a string for the plot name
 
+# estimateLeaching --------------------------------------------------------
+# Arguments: yieldFile->string where the yield/hectare file is located
+#           nutrientFile->string where the nutrient application rate file is located
+#           crop->string for the crop name. must match a crop in the "crops" vector
+#           NPK_choice->character that denotes nutrient choice, either "N", "P", or "K"
+#           plotName->string that will be the name of the outputted plot
+# Use: computes the total estimated leaching for a given crop with a given nutrient
+#       and outputs this plot
+# Does not return anything, just plots
+estimateLeaching <- function(yieldFile,nutrientFile,crop,NPK_choice,plotName){
   # Load the files in
   yield_hectare <- raster(yieldFile)
   nutrient_hectare <- raster(nutrientFile)
@@ -112,7 +133,14 @@ estimateLeaching <- function(yieldFile,nutrientFile,crop,NPK_choice,plotName){
 
 }
 
+# totalLeaching -----------------------------------------------------------
+# Arguments: NPK_choice->one of c("N","P","K") to compute total estimated leaching
+#           of a given nutrient for all of the possible crops.
+# Use: similar to estimateLeaching, but for all crops
+# Returns: nothing. Just plots the output plot
+
 totalLeaching <- function(NPK_choice){
+  # Check NPK_choice valid
   NPK_full <- switch (NPK_choice,
    "N" = "Nitrogen",
    "P" = "Phosphorus",
@@ -122,9 +150,12 @@ totalLeaching <- function(NPK_choice){
   if (NPK_full == -1){
     stop("NPK_choice is not a valid character (N,P,or K). Please choose a valid character.")
   }
+  # Base is final raster that will be plotted
   base <- NA
   for (i in 1:length(crops)){
+    # Get nutrient removal rates for current crop
     removal_vec <- removalRate(crops[i])
+    # Get file paths and load rasters
     crop_yield_path <- yield_string(crops[i])
     crop_nutrient_path <- NPK_string(crops[i],NPK_full)
     yield_hectare <- raster(crop_yield_path)
@@ -135,12 +166,14 @@ totalLeaching <- function(NPK_choice){
      "K" = removal_vec[3],
      -1
     )
+    # Compute total removed nutrients
     removal_hectare <- yield_hectare * NPK_val
     # Get difference in applied and removed
     nutrient_dif <- nutrient_hectare - removal_hectare
     if(i == 1){
       base <- nutrient_dif
     } else{
+      #IMPORTANT: need cover() fxn to not lose data to NAs
       temp_base <- base + nutrient_dif
       base <- cover(temp_base,base,nutrient_dif)
     }
@@ -148,4 +181,3 @@ totalLeaching <- function(NPK_choice){
   plot_graph(base,paste("Total",NPK_choice,"leached across 17 crops"))
 }
 
-#test
